@@ -311,6 +311,7 @@ main (int argc, char *argv[])
   // 42 = headers size
   Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1000 - 42));
   Config::SetDefault ("ns3::TcpSocket::DelAckCount", UintegerValue (1));
+  Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue("ClassicEcn");
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (false));
 
   uint32_t meanPktSize = 500;
@@ -464,7 +465,8 @@ main (int argc, char *argv[])
       std::cout << "*** RED stats from Node 3 queue disc ***" << std::endl;
       std::cout << st << std::endl;
     }
-
+  std::cout << "\nNumber of packets marked by router:" << count_cc; 
+  std::cout<<endl;
   Simulator::Destroy ();
 
   return 0;
