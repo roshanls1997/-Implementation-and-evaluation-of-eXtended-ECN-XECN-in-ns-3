@@ -108,6 +108,8 @@ public:
     ECN_IDLE,         /**< ECN is enabled  but currently there is no action pertaining to ECE or CWR to be taken         */
     ECN_CE_RCVD,      /**< Last packet received had CE bit set in IP header                                              */
     ECN_SENDING_ECE,  /**< Receiver sends an ACK with ECE bit set in TCP header                                          */
+    ECN_SENDING_CC,   /**< Receiver sends an ACK with CC bit(CWR + ECE) in TCP header                                    */
+    ECN_CC_RCVD,      /**< Last ACK received had CC bit(CWR + ECE) in TCP header                                         */
     ECN_ECE_RCVD,     /**< Last ACK received had ECE bit set in TCP header                                               */
     ECN_CWR_SENT      /**< Sender has reduced the congestion window, and sent a packet with CWR bit set in TCP header.
                         *  This state is used for tracing.                                                               */
