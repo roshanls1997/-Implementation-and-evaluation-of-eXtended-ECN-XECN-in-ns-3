@@ -211,7 +211,7 @@ TypeId RedQueueDisc::GetTypeId (void)
                    MakeTimeChecker ())
     .AddAttribute ("UseEcn",
                    "True to use ECN (packets are marked instead of being dropped)",
-                   BooleanValue (false),
+                   BooleanValue (true),
                    MakeBooleanAccessor (&RedQueueDisc::m_useEcn),
                    MakeBooleanChecker ())
     .AddAttribute ("UseHardDrop",
