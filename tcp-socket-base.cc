@@ -61,7 +61,7 @@
 
 #include <math.h>
 #include <algorithm>
-
+uint32_t count_cc = 0;
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("TcpSocketBase");
@@ -1435,8 +1435,16 @@ TcpSocketBase::ProcessEstablished (Ptr<Packet> packet, const TcpHeader& tcpHeade
           NS_LOG_WARN ("Ignored ack of " << tcpHeader.GetAckNumber () <<
                        " HighTxMark = " << m_tcb->m_highTxMark);
 
+
+          if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD )
+            {
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE | TcpHeader::CWR);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_CC");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_CC;
+            }
+
           // Receiver sets ECE flags when it receives a packet with CE bit on or sender hasn’t responded to ECN echo sent by receiver
-          if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
+          else if (m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_CC)
             {
               SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
               NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_ECE");
@@ -1687,7 +1695,22 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
   SequenceNumber32 oldHeadSequence = m_txBuffer->HeadSequence ();
   m_txBuffer->DiscardUpTo (ackNumber);
 
-  if (ackNumber > oldHeadSequence && (m_tcb->m_ecnState != TcpSocketState::ECN_DISABLED) && (tcpHeader.GetFlags () & TcpHeader::ECE))
+
+  if (ackNumber > oldHeadSequence && (m_tcb->m_ecnState != TcpSocketState::ECN_DISABLED) && ((tcpHeader.GetFlags () & TcpHeader::ECE) && (tcpHeader.GetFlags () & TcpHeader::CWR)))
+    {
+      if (m_ecnEchoSeq < ackNumber)
+        {
+          count_cc++;
+          NS_LOG_INFO ("Received ECN Echo is valid");
+          m_ecnEchoSeq = ackNumber;
+          NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_CC_RCVD");
+          m_tcb->m_ecnState = TcpSocketState::ECN_CC_RCVD;
+        }
+    }
+
+
+
+  else if (ackNumber > oldHeadSequence && (m_tcb->m_ecnState != TcpSocketState::ECN_DISABLED) && (tcpHeader.GetFlags () & TcpHeader::ECE))
     {
       if (m_ecnEchoSeq < ackNumber)
         {
@@ -2867,7 +2890,7 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
     }
 
   // Sender should reduce the Congestion Window as a response to receiver's ECN Echo notification only once per window
-  if (m_tcb->m_ecnState == TcpSocketState::ECN_ECE_RCVD && m_ecnEchoSeq.Get() > m_ecnCWRSeq.Get () && !isRetransmission)
+  if ((m_tcb->m_ecnState == TcpSocketState::ECN_ECE_RCVD || m_tcb->m_ecnState ==TcpSocketState::ECN_CC_RCVD) && m_ecnEchoSeq.Get() > m_ecnCWRSeq.Get () && !isRetransmission)
     {
       NS_LOG_INFO ("Backoff mechanism by reducing CWND  by half because we've received ECN Echo");
       m_tcb->m_cWnd = std::max (m_tcb->m_cWnd.Get () / 2, m_tcb->m_segmentSize);
@@ -3234,7 +3257,14 @@ TcpSocketBase::ReceivedData (Ptr<Packet> p, const TcpHeader& tcpHeader)
   SequenceNumber32 expectedSeq = m_rxBuffer->NextRxSequence ();
   if (!m_rxBuffer->Add (p, tcpHeader))
     { // Insert failed: No data or RX buffer full
-      if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
+      if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD )
+            {
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE | TcpHeader::CWR);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_CC");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_CC;
+            }
+
+      else if (m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_CC)
         {
           SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
           NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_ECE");
@@ -3270,12 +3300,19 @@ TcpSocketBase::ReceivedData (Ptr<Packet> p, const TcpHeader& tcpHeader)
   if (m_rxBuffer->Size () > m_rxBuffer->Available () || m_rxBuffer->NextRxSequence () > expectedSeq + p->GetSize ())
     { // A gap exists in the buffer, or we filled a gap: Always ACK
       m_congestionControl->CwndEvent (m_tcb, TcpSocketState::CA_EVENT_NON_DELAYED_ACK);
-      if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
-        {
-          SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
-          NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_ECE");
-          m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_ECE;
-        }
+          if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD )
+            {
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE | TcpHeader::CWR);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_CC");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_CC;
+            }
+
+            else if (m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_CC)
+            {
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_ECE");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_ECE;
+            }
       else
         {
           SendEmptyPacket (TcpHeader::ACK);
@@ -3288,7 +3325,18 @@ TcpSocketBase::ReceivedData (Ptr<Packet> p, const TcpHeader& tcpHeader)
           m_delAckEvent.Cancel ();
           m_delAckCount = 0;
           m_congestionControl->CwndEvent (m_tcb, TcpSocketState::CA_EVENT_NON_DELAYED_ACK);
-          if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
+          
+
+          if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD)
+            {
+              NS_LOG_DEBUG("Congestion algo " << m_congestionControl->GetName ());
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE | TcpHeader::CWR);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_CC");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_CC;
+            }
+
+
+          else if (m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE ||m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_CC )
             {
               NS_LOG_DEBUG("Congestion algo " << m_congestionControl->GetName ());
               SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
@@ -3553,7 +3601,14 @@ TcpSocketBase::DelAckTimeout (void)
 {
   m_delAckCount = 0;
   m_congestionControl->CwndEvent (m_tcb, TcpSocketState::CA_EVENT_DELAYED_ACK);
-  if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
+  if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD)
+    {
+      SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE | TcpHeader::CWR);
+      m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_CC;
+    }
+
+
+  else if (m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_CC)
     {
       SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
       m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_ECE;
@@ -3723,12 +3778,19 @@ TcpSocketBase::SetRcvBufSize (uint32_t size)
    */
   if (oldSize < size && m_connected)
     {
-      if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE)
-        {
-          SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
-          NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_ECE");
-          m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_ECE;
-        }
+      if (m_tcb->m_ecnState == TcpSocketState::ECN_CE_RCVD )
+            {
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE | TcpHeader::CWR);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_CC");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_CC;
+            }
+
+      else if (m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_ECE || m_tcb->m_ecnState == TcpSocketState::ECN_SENDING_CC)
+            {
+              SendEmptyPacket (TcpHeader::ACK | TcpHeader::ECE);
+              NS_LOG_DEBUG (TcpSocketState::EcnStateName[m_tcb->m_ecnState] << " -> ECN_SENDING_ECE");
+              m_tcb->m_ecnState = TcpSocketState::ECN_SENDING_ECE;
+            }
       else
         {
           SendEmptyPacket (TcpHeader::ACK);
