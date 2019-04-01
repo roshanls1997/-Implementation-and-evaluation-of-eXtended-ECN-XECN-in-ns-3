@@ -311,7 +311,7 @@ main (int argc, char *argv[])
   // 42 = headers size
   Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1000 - 42));
   Config::SetDefault ("ns3::TcpSocket::DelAckCount", UintegerValue (1));
-  Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue("ClassicEcn");
+  Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue("ClassicEcn"));
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (false));
 
   uint32_t meanPktSize = 500;
