@@ -216,7 +216,7 @@ TypeId RedQueueDisc::GetTypeId (void)
                    MakeBooleanChecker ())
     .AddAttribute ("UseHardDrop",
                    "True to always drop packets above max threshold",
-                   BooleanValue (true),
+                   BooleanValue (false),
                    MakeBooleanAccessor (&RedQueueDisc::m_useHardDrop),
                    MakeBooleanChecker ())
   ;
