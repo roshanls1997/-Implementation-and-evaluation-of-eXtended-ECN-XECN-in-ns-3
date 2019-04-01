@@ -318,7 +318,7 @@ main (int argc, char *argv[])
 
   // RED params
   NS_LOG_INFO ("Set RED params");
-  Config::SetDefault ("ns3::RedQueueDisc::MaxSize", StringValue ("1000p"));
+  Config::SetDefault ("ns3::RedQueueDisc::MaxSize", StringValue ("6000p"));
   Config::SetDefault ("ns3::RedQueueDisc::MeanPktSize", UintegerValue (meanPktSize));
   Config::SetDefault ("ns3::RedQueueDisc::Wait", BooleanValue (true));
   Config::SetDefault ("ns3::RedQueueDisc::Gentle", BooleanValue (true));
@@ -334,7 +334,7 @@ main (int argc, char *argv[])
   else if (redTest == 5) // test 5, same of test 4, but in byte mode
     {
       Config::SetDefault ("ns3::RedQueueDisc::MaxSize",
-                          QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, 1000 * meanPktSize)));
+                          QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, 6000 * meanPktSize)));
       Config::SetDefault ("ns3::RedQueueDisc::Ns1Compat", BooleanValue (true));
       Config::SetDefault ("ns3::RedQueueDisc::MinTh", DoubleValue (5 * meanPktSize));
       Config::SetDefault ("ns3::RedQueueDisc::MaxTh", DoubleValue (15 * meanPktSize));
@@ -346,7 +346,7 @@ main (int argc, char *argv[])
 
   TrafficControlHelper tchPfifo;
   uint16_t handle = tchPfifo.SetRootQueueDisc ("ns3::PfifoFastQueueDisc");
-  tchPfifo.AddInternalQueues (handle, 3, "ns3::DropTailQueue", "MaxSize", StringValue ("1000p"));
+  tchPfifo.AddInternalQueues (handle, 3, "ns3::DropTailQueue", "MaxSize", StringValue ("6000p"));
 
   TrafficControlHelper tchRed;
   tchRed.SetRootQueueDisc ("ns3::RedQueueDisc", "LinkBandwidth", StringValue (redLinkDataRate),
@@ -356,13 +356,13 @@ main (int argc, char *argv[])
   PointToPointHelper p2p;
 
   p2p.SetQueue ("ns3::DropTailQueue");
-  p2p.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
+  p2p.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
   p2p.SetChannelAttribute ("Delay", StringValue ("2ms"));
   NetDeviceContainer devn0n2 = p2p.Install (n0n2);
   tchPfifo.Install (devn0n2);
 
   p2p.SetQueue ("ns3::DropTailQueue");
-  p2p.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
+  p2p.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
   p2p.SetChannelAttribute ("Delay", StringValue ("3ms"));
   NetDeviceContainer devn1n2 = p2p.Install (n1n2);
   tchPfifo.Install (devn1n2);
@@ -412,7 +412,7 @@ main (int argc, char *argv[])
       // like in ns2 test, r2 -> r1, have a queue in packet mode
       Ptr<QueueDisc> queue = queueDiscs.Get (1);
 
-      queue->SetMaxSize (QueueSize ("1000p"));
+      queue->SetMaxSize (QueueSize ("6000p"));
       StaticCast<RedQueueDisc> (queue)->SetTh (5, 15);
     }
 
@@ -466,7 +466,7 @@ main (int argc, char *argv[])
       std::cout << st << std::endl;
     }
   std::cout << "\nNumber of packets marked by router:" << count_cc; 
-  std::cout<<endl;
+  std::cout << "\n";
   Simulator::Destroy ();
 
   return 0;
