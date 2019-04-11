@@ -284,6 +284,7 @@ private:
   bool m_isNs1Compat;       //!< Ns-1 compatibility
   DataRate m_linkBandwidth; //!< Link bandwidth
   Time m_linkDelay;         //!< Link delay
+  bool m_useXEcn;           //!< True if ExtendeECN is used (packets are marked instead of being dropped and marked packets are count by the sender )
   bool m_useEcn;            //!< True if ECN is used (packets are marked instead of being dropped)
   bool m_useHardDrop;       //!< True if packets are always dropped above max threshold
 

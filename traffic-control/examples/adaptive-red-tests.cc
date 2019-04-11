@@ -199,7 +199,7 @@ main (int argc, char *argv[])
   client_stop_time = global_stop_time - 2.0;
 
   // Configuration and command line parameter parsing
-  aredTest = 1;
+  aredTest = 11;
   // Will only save in the directory if enable opts below
   pathOut = "."; // Current directory
   CommandLine cmd;
@@ -236,7 +236,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1000 - 42));
   Config::SetDefault ("ns3::TcpSocket::DelAckCount", UintegerValue (1));
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (false));
-
+  //Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue ("ClassicEcn"));
   uint32_t meanPktSize = 1000;
 
   // RED params

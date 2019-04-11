@@ -76,6 +76,19 @@ public:
     IN_BURST,
     IN_BURST_PROTECTING,
   };
+  
+  
+    /** drop types
+  *
+  */
+  enum 
+  {
+    DTYPE_NONE, // no drop
+    DTYPE_FORCED, //forced drop
+    DTYPE_UNFORCED, // unforced(random) drop
+    
+  };
+  
 
   /**
    * \brief Get queue delay.
@@ -97,6 +110,12 @@ public:
   // Reasons for dropping packets
   static constexpr const char* UNFORCED_DROP = "Unforced drop";  //!< Early probability drops: proactive
   static constexpr const char* FORCED_DROP = "Forced drop";      //!< Drops due to queue limit: reactive
+
+  // reasons for marking packets
+  static constexpr const char* UNFORCED_MARK = "Unforced mark";  //!< Early probability mark
+  static constexpr const char* FORCED_MARK = "Forced mark";      //!< forced mark
+
+
 
 protected:
   /**
@@ -154,6 +173,11 @@ private:
   uint64_t m_dqCount;                           //!< Number of bytes departed since current measurement cycle starts
   EventId m_rtrsEvent;                          //!< Event used to decide the decision of interval of drop probability calculation
   Ptr<UniformRandomVariable> m_uv;              //!< Rng stream
+  
+  bool m_useEcn;        // true if ecn is used
+  bool m_useHardDrop;   // true if packets are always dropped above max threshold
+  double m_mark_ecnth;  // additional thresold to revert packet-marking to packet-
+  bool m_useXEcn ;    // // true if Extended ecn is used
 };
 
 };   // namespace ns3

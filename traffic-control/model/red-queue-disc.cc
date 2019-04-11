@@ -216,8 +216,13 @@ TypeId RedQueueDisc::GetTypeId (void)
                    MakeBooleanChecker ())
     .AddAttribute ("UseHardDrop",
                    "True to always drop packets above max threshold",
-                   BooleanValue (true),
+                   BooleanValue (false),
                    MakeBooleanAccessor (&RedQueueDisc::m_useHardDrop),
+                   MakeBooleanChecker ())
+    .AddAttribute ("UseXEcn",
+                   "True to use ExtendedECN ",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&RedQueueDisc::m_useXEcn),
                    MakeBooleanChecker ())
   ;
 
@@ -409,7 +414,7 @@ RedQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 
   if (dropType == DTYPE_UNFORCED)
     {
-      if (!m_useEcn || !Mark (item, UNFORCED_MARK))
+      if (!(m_useEcn ||m_useXEcn) || !Mark (item, UNFORCED_MARK))
         {
           NS_LOG_DEBUG ("\t Dropping due to Prob Mark " << m_qAvg);
           DropBeforeEnqueue (item, UNFORCED_DROP);
@@ -419,7 +424,7 @@ RedQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
     }
   else if (dropType == DTYPE_FORCED)
     {
-      if (m_useHardDrop || !m_useEcn || !Mark (item, FORCED_MARK))
+      if (m_useHardDrop || !(m_useEcn || m_useXEcn) || !Mark (item, FORCED_MARK))
         {
           NS_LOG_DEBUG ("\t Dropping due to Hard Mark " << m_qAvg);
           DropBeforeEnqueue (item, FORCED_DROP);

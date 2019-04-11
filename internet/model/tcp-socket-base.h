@@ -33,6 +33,8 @@
 #include "ns3/node.h"
 #include "ns3/tcp-socket-state.h"
 
+extern uint32_t count_cc;
+
 namespace ns3 {
 
 class Ipv4EndPoint;
@@ -486,7 +488,8 @@ public:
   typedef enum
     {
       NoEcn = 0,   //!< ECN is not enabled.
-      ClassicEcn   //!< ECN functionality as described in RFC 3168.
+      ClassicEcn, //!< ECN functionality as described in RFC 3168.
+      ExtendedEcn   
     } EcnMode_t;
 
   /**

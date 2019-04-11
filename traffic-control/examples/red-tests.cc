@@ -311,19 +311,23 @@ main (int argc, char *argv[])
   // 42 = headers size
   Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (1000 - 42));
   Config::SetDefault ("ns3::TcpSocket::DelAckCount", UintegerValue (1));
+  //Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue("ClassicEcn"));
+  Config::SetDefault ("ns3::TcpSocketBase::EcnMode", StringValue("ExtendedEcn"));
   GlobalValue::Bind ("ChecksumEnabled", BooleanValue (false));
 
   uint32_t meanPktSize = 500;
 
   // RED params
   NS_LOG_INFO ("Set RED params");
-  Config::SetDefault ("ns3::RedQueueDisc::MaxSize", StringValue ("1000p"));
+  Config::SetDefault ("ns3::RedQueueDisc::MaxSize", StringValue ("10000p"));
   Config::SetDefault ("ns3::RedQueueDisc::MeanPktSize", UintegerValue (meanPktSize));
   Config::SetDefault ("ns3::RedQueueDisc::Wait", BooleanValue (true));
   Config::SetDefault ("ns3::RedQueueDisc::Gentle", BooleanValue (true));
   Config::SetDefault ("ns3::RedQueueDisc::QW", DoubleValue (0.002));
   Config::SetDefault ("ns3::RedQueueDisc::MinTh", DoubleValue (5));
   Config::SetDefault ("ns3::RedQueueDisc::MaxTh", DoubleValue (15));
+  Config::SetDefault ("ns3::RedQueueDisc::UseEcn", BooleanValue (false));
+  Config::SetDefault ("ns3::RedQueueDisc::UseXEcn", BooleanValue (true));
 
   if (redTest == 3) // test like 1, but with bad params
     {
@@ -333,7 +337,7 @@ main (int argc, char *argv[])
   else if (redTest == 5) // test 5, same of test 4, but in byte mode
     {
       Config::SetDefault ("ns3::RedQueueDisc::MaxSize",
-                          QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, 1000 * meanPktSize)));
+                          QueueSizeValue (QueueSize (QueueSizeUnit::BYTES, 10000 * meanPktSize)));
       Config::SetDefault ("ns3::RedQueueDisc::Ns1Compat", BooleanValue (true));
       Config::SetDefault ("ns3::RedQueueDisc::MinTh", DoubleValue (5 * meanPktSize));
       Config::SetDefault ("ns3::RedQueueDisc::MaxTh", DoubleValue (15 * meanPktSize));
@@ -345,7 +349,7 @@ main (int argc, char *argv[])
 
   TrafficControlHelper tchPfifo;
   uint16_t handle = tchPfifo.SetRootQueueDisc ("ns3::PfifoFastQueueDisc");
-  tchPfifo.AddInternalQueues (handle, 3, "ns3::DropTailQueue", "MaxSize", StringValue ("1000p"));
+  tchPfifo.AddInternalQueues (handle, 3, "ns3::DropTailQueue", "MaxSize", StringValue ("10000p"));
 
   TrafficControlHelper tchRed;
   tchRed.SetRootQueueDisc ("ns3::RedQueueDisc", "LinkBandwidth", StringValue (redLinkDataRate),
@@ -411,7 +415,7 @@ main (int argc, char *argv[])
       // like in ns2 test, r2 -> r1, have a queue in packet mode
       Ptr<QueueDisc> queue = queueDiscs.Get (1);
 
-      queue->SetMaxSize (QueueSize ("1000p"));
+      queue->SetMaxSize (QueueSize ("10000p"));
       StaticCast<RedQueueDisc> (queue)->SetTh (5, 15);
     }
 
@@ -464,7 +468,8 @@ main (int argc, char *argv[])
       std::cout << "*** RED stats from Node 3 queue disc ***" << std::endl;
       std::cout << st << std::endl;
     }
-
+  std::cout << "\nNumber of packets marked by router:" << count_cc; 
+  std::cout<<std::endl;
   Simulator::Destroy ();
 
   return 0;

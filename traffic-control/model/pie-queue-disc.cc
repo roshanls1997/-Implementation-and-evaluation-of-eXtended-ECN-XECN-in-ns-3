@@ -93,6 +93,21 @@ TypeId PieQueueDisc::GetTypeId (void)
                    TimeValue (Seconds (0.1)),
                    MakeTimeAccessor (&PieQueueDisc::m_maxBurst),
                    MakeTimeChecker ())
+    .AddAttribute ("UseEcn",
+                   "True to use ECN (packets are marked instead of being dropped)",
+                   BooleanValue(false),
+                   MakeBooleanAccessor (&PieQueueDisc::m_useEcn),
+                   MakeBooleanChecker())
+    .AddAttribute ("UseXEcn",
+                   "True to use Extended ECN ",
+                   BooleanValue(false),
+                   MakeBooleanAccessor (&PieQueueDisc::m_useXEcn),
+                   MakeBooleanChecker())
+     .AddAttribute ("UseHardDrop",
+                   "True to always drop packets above max threshold",
+                   BooleanValue(false),
+                   MakeBooleanAccessor (&PieQueueDisc::m_useHardDrop),
+                   MakeBooleanChecker())
   ;
 
   return tid;
@@ -141,7 +156,9 @@ PieQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
   NS_LOG_FUNCTION (this << item);
 
   QueueSize nQueued = GetCurrentSize ();
+  uint32_t dropType = DTYPE_NONE;
 
+/*
   if (nQueued + item > GetMaxSize ())
     {
       // Drops due to queue limit: reactive
@@ -154,6 +171,39 @@ PieQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
       DropBeforeEnqueue (item, UNFORCED_DROP);
       return false;
     }
+*/
+
+    if (nQueued + item > GetMaxSize ()){
+      // Drops due to queue limit: reactive
+      dropType = DTYPE_FORCED;
+    }
+    else if (DropEarly (item, nQueued.GetValue ()))
+    {
+      // Early probability drop: proactive
+      dropType = DTYPE_UNFORCED;
+    }
+    
+    if(dropType==DTYPE_UNFORCED)
+    {
+        if((!m_useEcn &&  !m_useXEcn) ||!Mark(item, UNFORCED_MARK))
+        {
+            //NS_LOG_DEBUG("\t Dropping packet due to Prob Mark "<<m_avgDqRate);
+            DropBeforeEnqueue(item, UNFORCED_DROP);
+            return false;
+        }
+        //NS_LOG_DEBUG("\t Marking due to Prob Mark " << m_avgDqRate);
+    }
+    else if(dropType==DTYPE_FORCED)
+    {
+        if(m_useHardDrop || (!m_useEcn && !m_useXEcn) ||!Mark(item, FORCED_MARK))
+        {
+            //NS_LOG_DEBUG("\t Dropping due to Hard Mark " << m_avgDqRate);
+            DropBeforeEnqueue(item, FORCED_DROP);
+            return false;
+        }
+        //NS_LOG_DEBUG("\t Marking due to Hard Mark " << m_avgDqRate);
+    }
+
 
   // No drop
   bool retval = GetInternalQueue (0)->Enqueue (item);
