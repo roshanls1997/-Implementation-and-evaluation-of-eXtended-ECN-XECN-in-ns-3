@@ -18,6 +18,13 @@
  * Author: Marcos Talau (talau@users.sourceforge.net)
  *
  * Thanks to: Duy Nguyen<duy@soe.ucsc.edu> by RED efforts in NS3
+ 
+ 
+ Team Members
+Ashrit (16CO122)
+Darshan (16CO236)
+Roshan (16CO242)
+Shashank (16CO246)
  *
  *
  * This file incorporates work covered by the following copyright and  
